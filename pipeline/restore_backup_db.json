@@ -1,0 +1,154 @@
+{
+	"name": "restore_backup_db",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.list_tables",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "cp-backup-db-blob",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Lookup",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AvroSource",
+									"storeSettings": {
+										"type": "AzureBlobStorageReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "avrotable",
+									"type": "DatasetReference",
+									"parameters": {
+										"file_name": {
+											"value": "@concat(pipeline().parameters.schema,'_',item())",
+											"type": "Expression"
+										},
+										"path": {
+											"value": "@concat('backup/',formatDateTime(utcNow(),'yyyyMMdd'))",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "dssqltable",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema": {
+											"value": "@pipeline().parameters.schema",
+											"type": "Expression"
+										},
+										"table": {
+											"value": "@item()",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Lookup",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('TRUNCATE TABLE ',pipeline().parameters.schema,'.',item(),';','SELECT 1 ;')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "dssqltable",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema": {
+											"value": "@pipeline().parameters.schema",
+											"type": "Expression"
+										},
+										"table": {
+											"value": "@item()",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"schema": {
+				"type": "string",
+				"defaultValue": "company"
+			},
+			"list_tables": {
+				"type": "array",
+				"defaultValue": [
+					"jobs",
+					"departments",
+					"hired_employees"
+				]
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-06-03T18:09:13Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

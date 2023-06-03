@@ -1,0 +1,9 @@
+{
+	"name": "df-migration-data-db",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "a64e55ba-cdf6-4e54-9951-60739de374e2",
+		"tenantId": "c16fd09d-0580-4c22-b517-130b25597b0d"
+	}
+}

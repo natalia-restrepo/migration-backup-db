@@ -1,0 +1,113 @@
+{
+	"name": "create_backup_db",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.list_tables",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "cp-backup-db-blob",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('Select * from ',pipeline().parameters.schema,'.',item())",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AvroSink",
+									"storeSettings": {
+										"type": "AzureBlobStorageWriteSettings",
+										"copyBehavior": "FlattenHierarchy"
+									},
+									"formatSettings": {
+										"type": "AvroWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "dssqltable",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema": {
+											"value": "@pipeline().parameters.schema",
+											"type": "Expression"
+										},
+										"table": {
+											"value": "@item()",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "avrotable",
+									"type": "DatasetReference",
+									"parameters": {
+										"file_name": {
+											"value": "@concat(pipeline().parameters.schema,'_',item())",
+											"type": "Expression"
+										},
+										"path": {
+											"value": "@concat('backup/',formatDateTime(utcNow(),'yyyyMMdd'))",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"schema": {
+				"type": "string",
+				"defaultValue": "company"
+			},
+			"list_tables": {
+				"type": "array",
+				"defaultValue": [
+					"jobs",
+					"departments",
+					"hired_employees"
+				]
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-06-03T17:52:52Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
